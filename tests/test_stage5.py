@@ -60,8 +60,8 @@ def test_server_lists_all_tools(patched_cache):
         # mcp 2.3.0: create_client_server_memory_streams 是异步上下文管理器
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                # 启动服务器
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                # 启动服务器（mcp 本身就是 MCPServer）
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.list_tools()
                     return {t.name for t in result.tools}
@@ -73,7 +73,7 @@ def test_call_search_projects_over_mcp(patched_cache):
     async def _call():
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.call_tool(
                         "search_projects", {"industry": "智慧教育"}
@@ -89,7 +89,7 @@ def test_call_company_profile_group_aggregation(patched_cache):
     async def _call():
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.call_tool("company_profile", {"company": "甲集团"})
                     return json.loads(result.content[0].text)
@@ -102,7 +102,7 @@ def test_call_semantic_search_over_mcp(patched_cache):
     async def _call():
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.call_tool("semantic_search", {"query": "校园信息化"})
                     return json.loads(result.content[0].text)
@@ -115,7 +115,7 @@ def test_call_graph_query_dispatch(patched_cache):
     async def _call():
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.call_tool("graph_query", {"query_type": "tech_trends"})
                     return json.loads(result.content[0].text)
@@ -128,7 +128,7 @@ def test_call_industry_stats_over_mcp(patched_cache):
     async def _call():
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.call_tool("industry_stats", {"group_by": "province"})
                     return json.loads(result.content[0].text)
@@ -142,7 +142,7 @@ def test_call_error_handled_gracefully(patched_cache):
     async def _call():
         async with create_client_server_memory_streams() as (client_streams, server_streams):
             async with ClientSession(*client_streams) as session:
-                async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+                async with mcp.connect(server_streams[0], server_streams[1]):
                     await session.initialize()
                     result = await session.call_tool("graph_query", {})
                     return result.isError
