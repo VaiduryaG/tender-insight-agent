@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pandas as pd
 import pytest
-from mcp.shared.memory import create_connected_server_and_client_session
+from mcp.shared.memory import create_client_server_memory_streams
+from mcp import ClientSession
 
 from src.knowledge_graph.builder import build_graph
 from src.knowledge_graph.store import NetworkXStore
@@ -54,9 +55,20 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+async def _create_session():
+    """创建 MCP 客户端会话（适配 mcp 2.3.0 API）。"""
+    client_streams, server_streams = create_client_server_memory_streams()
+
+    async with ClientSession(*client_streams) as session:
+        # 启动服务器
+        async with mcp._mcp_server.connect(server_streams[0], server_streams[1]):
+            await session.initialize()
+            yield session
+
+
 def test_server_lists_all_tools(patched_cache):
     async def _list():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.list_tools()
             return {t.name for t in result.tools}
 
@@ -65,7 +77,7 @@ def test_server_lists_all_tools(patched_cache):
 
 def test_call_search_projects_over_mcp(patched_cache):
     async def _call():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.call_tool(
                 "search_projects", {"industry": "智慧教育"}
             )
@@ -78,7 +90,7 @@ def test_call_search_projects_over_mcp(patched_cache):
 
 def test_call_company_profile_group_aggregation(patched_cache):
     async def _call():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.call_tool("company_profile", {"company": "甲集团"})
             return json.loads(result.content[0].text)
 
@@ -88,7 +100,7 @@ def test_call_company_profile_group_aggregation(patched_cache):
 
 def test_call_semantic_search_over_mcp(patched_cache):
     async def _call():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.call_tool("semantic_search", {"query": "校园信息化"})
             return json.loads(result.content[0].text)
 
@@ -98,7 +110,7 @@ def test_call_semantic_search_over_mcp(patched_cache):
 
 def test_call_graph_query_dispatch(patched_cache):
     async def _call():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.call_tool("graph_query", {"query_type": "tech_trends"})
             return json.loads(result.content[0].text)
 
@@ -108,7 +120,7 @@ def test_call_graph_query_dispatch(patched_cache):
 
 def test_call_industry_stats_over_mcp(patched_cache):
     async def _call():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.call_tool("industry_stats", {"group_by": "province"})
             return json.loads(result.content[0].text)
 
@@ -119,7 +131,7 @@ def test_call_industry_stats_over_mcp(patched_cache):
 def test_call_error_handled_gracefully(patched_cache):
     """协议层调用未知工具/坏参数不崩溃，返回 isError。"""
     async def _call():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+        async for session in _create_session():
             result = await session.call_tool("graph_query", {})
             return result.isError
 
