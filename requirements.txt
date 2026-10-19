@@ -1,57 +1,54 @@
 # ========================================
-# 核心依赖
-# 安装: uv pip install -p .venv/bin/python -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# Core Dependencies
 # ========================================
 
-# 数据处理
+# Data Processing
 pandas>=2.0.0
 numpy>=1.24.0
 
-# 中文分词
+# Chinese Word Segmentation
 jieba>=0.42.0
 
-# 知识图谱（V1.0 方案，无需数据库服务）
+# Knowledge Graph
 networkx>=3.0
 
-# 向量检索
+# Vector Search
 chromadb>=0.4.0
 
-# LLM / Embedding（智谱AI，OpenAI兼容接口）
+# LLM / Embedding (ZhipuAI, OpenAI-compatible)
 zhipuai>=2.0.0
 openai>=1.0.0
 
-# Agent 框架（LangGraph StateGraph 实现，src/agent/graph_agent.py）
+# Agent Framework (LangGraph)
 langchain>=1.0.0
 langgraph>=1.0.0
 langchain-openai>=1.0.0
 
-# 爬虫（V2.0）
+# Crawler
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 
 # MCP
 mcp>=1.0.0
 
-# Web 界面
+# Web UI
 streamlit>=1.30.0
 plotly>=5.0.0
 pyvis>=0.3.0
 
-# 工具类
+# Utilities
 python-dotenv>=1.0.0
 loguru>=0.7.0
 tqdm>=4.66.0
 
-# 测试
+# Testing
 pytest>=8.0.0
 
 # ========================================
-# 未使用/后续按需安装
+# Optional / Future Dependencies
 # ========================================
-# 爬虫 D1 验证结论：静态 HTML + requests 即可，无需 DrissionPage
-
-# Neo4j 迁移（实现 Neo4jStore 时安装）
+# Neo4j (when implementing Neo4jStore)
 # neo4j>=5.0.0
 
-# PDF 解析（附件金额提取，P1）
+# PDF Parsing (for attachment extraction)
 # pdfplumber>=0.10.0
