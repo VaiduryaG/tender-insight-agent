@@ -135,5 +135,5 @@ def test_call_error_handled_gracefully(patched_cache):
             result = await session.call_tool("graph_query", {})
             return result.isError
 
-    # graph_query 缺 query_type -> 函数签名错误 -> FastMCP 返回 isError
+    # graph_query 缺 query_type -> 函数签名错误 -> MCPServer 返回 isError
     assert _run(_call()) is True

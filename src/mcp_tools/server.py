@@ -15,11 +15,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mcp.server.fastmcp import FastMCP
+# mcp 2.x: FastMCP 重命名为 MCPServer
+from mcp.server.mcpserver import MCPServer
 
 from src.mcp_tools import tools as T
 
-mcp = FastMCP("bidding-agent")
+mcp = MCPServer("bidding-agent")
 
 
 def _json(result) -> str:
