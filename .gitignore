@@ -1,0 +1,111 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# 环境变量
+.env
+.env.local
+
+# 数据文件
+# 种子数据保留（手动采集，项目必需）
+# !data/raw/bidding_sample.csv
+# !data/raw/company_mapping_template.csv
+
+# 处理后的数据不提交（可重新生成）
+data/processed/*.parquet
+data/processed/*.csv
+data/processed/*.json
+data/processed/*.txt
+
+# 向量数据库
+data/vector/
+chroma_db/
+
+# 知识图谱数据（可重新生成）
+data/graph/
+
+# 爬虫数据（可重新爬取）
+data/raw/crawled/
+
+# 缓存数据库
+data/cache/*.db
+data/cache/*.sqlite
+
+# 日志文件
+logs/
+*.log
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# Neo4j数据
+neo4j_data/
+
+# ChromaDB数据
+chroma_db/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# 测试覆盖率
+.coverage
+htmlcov/
+
+# 打包文件
+*.tar.gz
+*.zip
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 备份文件
+*.bak
+*.backup
+
+# 项目特定
+notebooks/*.ipynb_checkpoints
+scripts/__pycache__/
+tests/__pycache__/
+# pyvis 生成物与缓存
+lib/
+.pytest_cache/

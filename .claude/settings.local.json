@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(//home/guoruirui/.local/lib/python3.12/**)",
+      "Bash(uv *)",
+      "Bash(.venv/bin/python *)",
+      "Bash(.venv/bin/streamlit *)",
+      "Bash(./run.sh *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(chmod +x *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(tree *)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(diff *)",
+      "Bash(git *)",
+      "Bash(rm *)",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf .)"
+    ]
+  }
+}
