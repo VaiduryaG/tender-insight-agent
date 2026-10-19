@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from loguru import logger
 
 from src.agent.graph_agent import LangGraphAgent
+from src.agent.llm import LLMClient
 from src.mcp_tools.tools import build_registry
 
 
@@ -407,8 +408,9 @@ def main() -> None:
     logger.info("开始 Agent 评估...")
 
     # 初始化 Agent
+    llm = LLMClient()
     registry = build_registry()
-    agent = LangGraphAgent(registry)
+    agent = LangGraphAgent(llm, registry)
 
     # 运行评估
     results = []
