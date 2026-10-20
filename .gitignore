@@ -109,3 +109,8 @@ tests/__pycache__/
 # pyvis 生成物与缓存
 lib/
 .pytest_cache/
+
+# 个人文档（本地保留，不上传公开仓库）
+docs/
+HANDOFF.md
+CLAUDE.md
