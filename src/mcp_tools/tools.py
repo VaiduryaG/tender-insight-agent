@@ -70,6 +70,14 @@ def _load_index():
     return _cache["index"]
 
 
+def _region_display(province: str, city: str) -> str:
+    """省+市 拼接展示；爬虫数据 city 用省名填充，去重避免"内蒙古内蒙古"。"""
+    province, city = (province or "").strip(), (city or "").strip()
+    if city and city != province:
+        return f"{province}{city}"
+    return province
+
+
 # ---------------------------------------------------------------------------
 # 工具 1: search_projects —— 精确条件筛选
 # ---------------------------------------------------------------------------
@@ -127,8 +135,9 @@ def search_projects(
                 "group": str(r["group_name"]),
                 "amount": float(r["amount_normalized"]),
                 "date": str(r["announcement_date_normalized"]),
+                "purchaser": str(r.get("purchaser", "")),
                 "industry": str(r["industry"]),
-                "region": f"{r['province']}{r['city']}",
+                "region": _region_display(str(r["province"]), str(r["city"])),
             }
             for _, r in df.iterrows()
         ],
@@ -138,11 +147,16 @@ def search_projects(
 
     # IT-025 三级降级第 3 级：精确检索仍 0 结果 → 自动回退语义检索。
     # 模型（尤其 glm-4-flash）拿到空列表往往直接放弃回答，工具层兜底
-    # 保证"用户随口一问"也能拿到最接近的数据
+    # 保证"用户随口一问"也能拿到最接近的数据。回退结果按标题反查 df
+    # 补采购人字段（向量元数据没存采购人）
     if not result["projects"] and keyword:
         try:
             sem = semantic_search(query=keyword, top_k=int(top_k))
             if sem["results"]:
+                full_df = _load_df()
+                for p in sem["results"]:
+                    hit = full_df[full_df["title"] == p["title"]]
+                    p["purchaser"] = str(hit.iloc[0].get("purchaser", "")) if len(hit) else ""
                 result["total_matched"] = len(sem["results"])
                 result["projects"] = sem["results"]
                 result["keyword_match_mode"] = "semantic_fallback（精确检索无结果，已回退语义检索，按相似度排序）"
@@ -236,8 +250,11 @@ def semantic_search(query: str, top_k: int = 5, industry: str | None = None) -> 
                 "title": h.get("title", ""),
                 "similarity": h.get("similarity"),
                 "company": h.get("company", ""),
+                "group": h.get("group", ""),
                 "amount": h.get("amount", 0.0),
+                "date": h.get("date", ""),
                 "industry": h.get("industry", ""),
+                "region": _region_display(h.get("province", ""), h.get("city", "")),
             }
             for h in hits
         ]
