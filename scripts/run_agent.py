@@ -42,7 +42,15 @@ FULL_QUESTIONS = [
 def build_agent(verbose: bool = True) -> LangGraphAgent:
     llm = LLMClient()
     registry = build_registry()
-    return LangGraphAgent(llm, registry, max_steps=8, verbose=verbose)
+    from src.agent.query_rewrite import rewrite_query
+
+    return LangGraphAgent(
+        llm,
+        registry,
+        max_steps=8,
+        verbose=verbose,
+        query_rewriter=lambda q: rewrite_query(llm, q),  # RAG 查询改写
+    )
 
 
 def ask(agent: LangGraphAgent, question: str, history: Conversation) -> None:

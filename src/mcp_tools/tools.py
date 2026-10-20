@@ -83,20 +83,42 @@ def search_projects(
     max_amount: float | None = None,
     top_k: int = 10,
 ) -> dict[str, Any]:
-    """按行业/省份/关键词/金额区间筛选中标项目。"""
+    """按行业/省份/关键词/金额区间筛选中标项目。
+
+    关键词匹配（IT-025）：LLM 常把口语短语整串传来（如"学校器材"），
+    纯子串匹配必然 0 结果。三级降级策略：
+    1. 分词（jieba）后 AND 匹配（所有词都出现）
+    2. AND 无结果 → OR 匹配（任一词命中）
+    3. 仍无结果 → 自动回退 semantic_search 语义检索（不要求字面命中），
+       返回 fallback_to_semantic 提示
+    """
     df = _load_df()
+    match_mode = ""
+    terms: list[str] = []
     if industry:
         df = df[df["industry"] == industry]
     if province:
         df = df[df["province"] == province]
     if keyword:
-        df = df[df["title"].str.contains(keyword, na=False)]
+        import jieba
+
+        terms = [t for t in jieba.cut(keyword) if len(t) >= 2][:8]  # 跳过单字噪声
+        if terms:
+            and_mask = df["title"].map(lambda s: all(t in s for t in terms))
+            if and_mask.any():
+                df = df[and_mask]
+                match_mode = "AND"
+            else:
+                or_mask = df["title"].map(lambda s: any(t in s for t in terms))
+                if or_mask.any():
+                    df = df[or_mask]
+                    match_mode = "OR"
     if min_amount is not None:
         df = df[df["amount_normalized"] >= float(min_amount)]
     if max_amount is not None:
         df = df[df["amount_normalized"] <= float(max_amount)]
     df = df.sort_values("amount_normalized", ascending=False).head(int(top_k))
-    return {
+    result: dict[str, Any] = {
         "total_matched": len(df),
         "projects": [
             {
@@ -111,6 +133,24 @@ def search_projects(
             for _, r in df.iterrows()
         ],
     }
+    if match_mode and keyword:
+        result["keyword_match_mode"] = f"{match_mode}（已拆词：{' / '.join(terms)}）"
+
+    # IT-025 三级降级第 3 级：精确检索仍 0 结果 → 自动回退语义检索。
+    # 模型（尤其 glm-4-flash）拿到空列表往往直接放弃回答，工具层兜底
+    # 保证"用户随口一问"也能拿到最接近的数据
+    if not result["projects"] and keyword:
+        try:
+            sem = semantic_search(query=keyword, top_k=int(top_k))
+            if sem["results"]:
+                result["total_matched"] = len(sem["results"])
+                result["projects"] = sem["results"]
+                result["keyword_match_mode"] = "semantic_fallback（精确检索无结果，已回退语义检索，按相似度排序）"
+                result["note"] = "以下为语义最接近的项目，标题可能不含字面关键词，请向用户说明"
+        except Exception:
+            pass  # 语义索引不可用时保持空结果原样返回
+
+    return result
 
 
 # ---------------------------------------------------------------------------

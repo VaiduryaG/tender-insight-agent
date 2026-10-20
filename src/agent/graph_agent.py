@@ -136,12 +136,17 @@ class LangGraphAgent:
         max_steps: int = 8,
         system_prompt: str = SYSTEM_PROMPT,
         verbose: bool = False,
+        query_rewriter: Any | None = None,
     ):
         self.llm = llm
         self.registry = registry
         self.max_steps = max_steps
         self.system_prompt = system_prompt
         self.verbose = verbose
+        # 查询改写（RAG Query Rewrite）：callable(question) -> list[str]。
+        # 注入而非内部构造——测试可用替身，生产在 load_agent 处接 rewrite_query+LLM；
+        # 传 None 则跳过改写（最简部署形态）
+        self.query_rewriter = query_rewriter
 
         from langchain_core.runnables import RunnableLambda
 
@@ -218,11 +223,24 @@ class LangGraphAgent:
     # ---- 对外接口：与 ReActAgent.run 完全一致 ----------------------------------
 
     def run(self, question: str, history: Conversation | None = None) -> AgentResult:
+        # 查询改写（IT-026 / RAG Query Rewrite）：口语化问题先翻译成检索关键词，
+        # 作为上下文提示注入 user 消息——不改写问题本身（保留用户原话的语义完整），
+        # 只给模型"哪些词可能字面命中公告标题"的弹药；改写失败静默跳过
+        user_content = question
+        if self.query_rewriter:
+            keywords = self.query_rewriter(question)
+            if keywords:
+                hints = "、".join(keywords)
+                user_content = (
+                    f"{question}\n\n"
+                    f"[检索提示] 以下关键词可能字面命中公告标题，调用检索工具时可优先使用：{hints}"
+                )
+
         messages: list = [SystemMessage(content=self.system_prompt)]
         if history:
             for m in history.as_list():
                 messages.append({"role": m["role"], "content": m["content"]})
-        messages.append({"role": "user", "content": question})
+        messages.append({"role": "user", "content": user_content})
 
         final_state = self._graph.invoke(
             {"messages": messages, "used_tools": False, "retried": False},

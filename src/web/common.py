@@ -169,9 +169,17 @@ def load_agent():
     try:
         from src.agent.graph_agent import LangGraphAgent
         from src.agent.llm import LLMClient
+        from src.agent.query_rewrite import rewrite_query
         from src.mcp_tools.tools import build_registry
 
-        return LangGraphAgent(LLMClient(), build_registry(), max_steps=8, verbose=False)
+        llm = LLMClient()
+        return LangGraphAgent(
+            llm,
+            build_registry(),
+            max_steps=8,
+            verbose=False,
+            query_rewriter=lambda q: rewrite_query(llm, q),  # RAG 查询改写（IT-026）
+        )
     except Exception as e:
         return e
 
