@@ -81,7 +81,11 @@ def registry_to_base_tools(registry: ToolRegistry) -> list:
         args_model = _make_args_model(t.name, t.parameters)
 
         def _run(self, **kwargs):
-            return self._registry.call(self._tool_name, json.dumps(kwargs, ensure_ascii=False))
+            # IT-022：LangGraph/ToolNode 调用会把"模型省略的可选参数"填成显式 None
+            # （pydantic 默认值），而 registry.call 依赖"键缺失 → 用注册时默认值"。
+            # 剔除 None 键，还原手写版的省略语义，否则 int(None)/str(None) 崩溃。
+            args = {k: v for k, v in kwargs.items() if v is not None}
+            return self._registry.call(self._tool_name, json.dumps(args, ensure_ascii=False))
 
         # pydantic 要求：覆盖/新增的字段必须带注解（含下划线私有属性）
         ns: dict = {

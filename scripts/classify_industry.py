@@ -194,12 +194,14 @@ def main() -> None:
 
     # 写回数据
     if reclassified:
-        # 创建新列 industry_llm
-        df["industry_llm"] = df["industry"]
+        # 直接更新生产列 industry（IT-023：此前写 industry_llm 列但下游
+        # 图谱/Web/Agent 全读 industry，LLM 分类从未真正生效）；
+        # 原规则分类留痕到 industry_rule 便于审计与回退
+        if "industry_rule" not in df.columns:
+            df["industry_rule"] = df["industry"]
         for r in reclassified:
-            # 找到对应行并更新
             mask = df["title"] == r["title"]
-            df.loc[mask, "industry_llm"] = r["industry"]
+            df.loc[mask, "industry"] = r["industry"]
 
         # 保存
         output_path = input_path
@@ -207,8 +209,8 @@ def main() -> None:
         logger.success("数据已更新: {}", output_path)
 
         # 更新后的统计
-        new_other_count = (df["industry_llm"] == "其他").sum()
-        old_other_count = (df["industry"] == "其他").sum()
+        new_other_count = (df["industry"] == "其他").sum()
+        old_other_count = (df["industry_rule"] == "其他").sum()
         logger.info(
             "\"其他\"占比: {:.1f}% → {:.1f}%",
             old_other_count / len(df) * 100,

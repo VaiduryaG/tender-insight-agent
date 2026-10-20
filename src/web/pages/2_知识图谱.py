@@ -78,6 +78,25 @@ hidden_edges = ALL_EDGES - len(edges_drawn)
 nt = Network(height="620px", bgcolor="#ffffff", font_color="#334155", select_menu=False)
 nt.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=120)
 
+# 预聚合（IT-024 续）：行业/技术/地区节点本身无属性（金额/日期都在项目节点上），
+# 悬停时从子图的边反向聚合出真实统计——行业=关联项目数+中标总额，
+# 技术=需求项目数，地区=落地项目数。修"悬停只显示【行业】两个字"的问题
+_proj_by_id = {n["id"]: n for n in sub["nodes"] if n["type"] == "Project"}
+_industry_agg: dict[str, dict] = {}   # 行业节点id -> {count, amount}
+_tech_agg: dict[str, int] = {}        # 技术节点id -> 需求项目数
+_region_agg: dict[str, int] = {}      # 地区节点id -> 落地项目数
+for e in sub["edges"]:
+    if e["type"] == "BELONGS_TO":
+        p = _proj_by_id.get(e["source_id"])
+        agg = _industry_agg.setdefault(e["target_id"], {"count": 0, "amount": 0.0})
+        if p is not None:
+            agg["count"] += 1
+            agg["amount"] += float(p.get("amount") or 0)
+    elif e["type"] == "REQUIRES":
+        _tech_agg[e["target_id"]] = _tech_agg.get(e["target_id"], 0) + 1
+    elif e["type"] == "LOCATED_IN":
+        _region_agg[e["target_id"]] = _region_agg.get(e["target_id"], 0) + 1
+
 # 子图中实际出现在所画边上的节点才展示（竞对关闭时隐藏孤立的竞对公司）
 drawn_node_ids = {e["source_id"] for e in edges_drawn} | {e["target_id"] for e in edges_drawn}
 # 视角中心节点始终展示
@@ -99,10 +118,12 @@ for node in sub["nodes"]:
     if len(label) > 16:
         label = label[:15] + "…"
     # 悬停卡片：按节点类型挑 2-3 个关键字段，长文本（summary/title）不进悬浮框，
-    # 避免"一连串数据"的观感；完整字段在下方「子图节点明细」表里看
+    # 避免"一连串数据"的观感；完整字段在下方「子图节点明细」表里看。
+    # 注意（IT-024）：vis-network 9.x 对字符串 title 走 innerText 纯文本渲染，
+    # <b>/<br> 等 HTML 标签会原样显示——必须用 \n 换行的纯文本
     type_names = {"Company": "公司", "Project": "项目", "Industry": "行业",
                   "Technology": "技术", "Region": "地区"}
-    title_parts = [f"<b>【{type_names.get(ntype, ntype)}】</b>"]
+    title_parts = [f"【{type_names.get(ntype, ntype)}】"]
     hover_fields = {
         "Company": ["group", "province"],
         "Project": ["amount", "date", "purchaser"],
@@ -110,15 +131,25 @@ for node in sub["nodes"]:
     }.get(ntype, [])
     if ntype == "Project" and node.get("title"):
         title_parts.append(node["title"][:40] + ("…" if len(node["title"]) > 40 else ""))
+    # 行业/技术/地区：预聚合的真实统计（节点自身无属性，金额都在项目上）
+    if ntype == "Industry" and node["id"] in _industry_agg:
+        agg = _industry_agg[node["id"]]
+        title_parts.append(f"关联项目：{agg['count']} 个")
+        if agg["amount"]:
+            title_parts.append(f"中标总额：{agg['amount'] / 10_000:.1f} 万元")
+    elif ntype == "Technology" and node["id"] in _tech_agg:
+        title_parts.append(f"需求项目：{_tech_agg[node['id']]} 个")
+    elif ntype == "Region" and node["id"] in _region_agg:
+        title_parts.append(f"落地项目：{_region_agg[node['id']]} 个")
     for field in hover_fields:
         value = node.get(field)
         if value is None or value == "":
             continue
         if field == "amount":
             value = f"{float(value) / 10_000:.1f} 万元"
-        field_names = {"group": "集团", "province": "省份", "date": "日期", "purchaser": "采购人"}
+        field_names = {"group": "集团", "province": "省份", "amount": "金额", "date": "日期", "purchaser": "采购人"}
         title_parts.append(f"{field_names.get(field, field)}：{value}")
-    title_lines = "<br>".join(title_parts)
+    title_lines = "\n".join(title_parts)
 
     size = 22 if ntype in ("Company", "Industry") else (16 if ntype == "Project" else 11)
     if node.get("type") == "Project" and node.get("amount"):

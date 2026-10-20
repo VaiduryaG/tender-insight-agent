@@ -195,3 +195,35 @@ def test_langgraph_agent_non_required_tool_param(registry):
     r = agent.run("查一下")
     assert r.used_tools is True
     assert "查到了" == r.answer
+
+
+def test_langgraph_agent_omitted_optional_param_not_none():
+    """IT-022 回归：模型省略的可选参数不能以显式 None 传给工具。
+
+    pydantic 参数模型会把省略字段填成 None；若原样透传 registry，工具收到的
+    是 top_k=None（Python 默认值失效）。正确行为：None 键被剔除，工具收到
+    注册函数签名里的默认值 top_k=10。
+    """
+    reg = ToolRegistry()
+
+    @reg.register(
+        name="probe",
+        description="记录实际收到的参数",
+        parameters={
+            "type": "object",
+            "properties": {"q": {"type": "string"}, "top_k": {"type": "integer"}},
+            "required": ["q"],
+        },
+    )
+    def probe(q, top_k=10):
+        return {"q": q, "top_k": top_k}
+
+    fake = FakeLLM([
+        {"content": "查", "tool_calls": [_tool_call("c1", "probe", {"q": "校园"})]},
+        {"content": "ok", "tool_calls": None},
+    ])
+    agent = LangGraphAgent(fake, reg, max_steps=8)
+    r = agent.run("查")
+
+    observation = r.trace[0]["observation"]  # 工具返回: {"q": "校园", "top_k": 10}
+    assert '"top_k": 10' in observation  # 默认值生效（None 透传则会是 "top_k": null）
