@@ -155,6 +155,22 @@ def test_polite_session_403_raises_blocked(monkeypatch, tmp_path):
     assert calls["n"] == 1  # 一次都不重试
 
 
+@pytest.mark.parametrize("status", [429, 503])
+def test_polite_session_rate_limit_stops(monkeypatch, status):
+    """IT-020：429/503 软性限流与 403 同级——立即停止，绝不快速重试。"""
+    session = PoliteSession(rate_limiter=RateLimiter(min_delay=0, max_delay=0))
+    calls = {"n": 0}
+
+    def fake_get(*a, **kw):
+        calls["n"] += 1
+        return StubResponse(status_code=status, text="slow down")
+
+    monkeypatch.setattr(session.session, "get", fake_get)
+    with pytest.raises(CrawlingBlocked, match="限流信号"):
+        session.get("https://x/1")
+    assert calls["n"] == 1  # 重试等于顶风作案，一次都不允许
+
+
 def test_polite_session_retry_then_success(monkeypatch):
     session = PoliteSession(rate_limiter=RateLimiter(min_delay=0, max_delay=0), max_retries=3)
     seq = [StubResponse(500), StubResponse(502), StubResponse(200, "页面内容")]

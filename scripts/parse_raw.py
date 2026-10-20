@@ -77,6 +77,26 @@ def normalize_province(region: str) -> str:
     return region
 
 
+# 日期双格式（IT-021）：列表页元数据为 "2026-09-17 17:22"，正文公告时间为
+# "2026年09月17日  09:16"——手工离线导入无列表页元数据，必须识别年月日格式
+_DATE_ISO_RE = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
+_DATE_CN_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
+
+
+def extract_date(text: str) -> str:
+    """从日期文本提取 ISO 日期（YYYY-MM-DD），支持横杠与年月日双格式。"""
+    text = text or ""
+    m = _DATE_ISO_RE.search(text)
+    if m:
+        y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
+        return f"{y}-{mo:02d}-{d:02d}"
+    m = _DATE_CN_RE.search(text)
+    if m:
+        y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
+        return f"{y}-{mo:02d}-{d:02d}"
+    return ""
+
+
 def classify_industry(title: str, project_name: str = "") -> str:
     """规则粗分类：标题+项目名关键词匹配，兜底"其他"。"""
     text = f"{title} {project_name}"
@@ -123,8 +143,7 @@ def convert(raw_records: list[dict]) -> pd.DataFrame:
 
         # ---- 字段映射 -------------------------------------------------
         date_full = d.get("publish_time", "") or r.fields.get("announce_time", "")
-        m = re.search(r"\d{4}-\d{2}-\d{2}", date_full)
-        date = m.group(0) if m else ""
+        date = extract_date(date_full)
 
         purchaser = r.fields.get("purchaser", "")
         if not purchaser or purchaser in ("详情见公告正文",):
